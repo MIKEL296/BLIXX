@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StreamHub - Your Streaming Platform</title>
+    <link rel="stylesheet" href="streaming_platform.css">
+</head>
+
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="logo">
+                <span class="logo-icon">▶</span>
+                <span class="logo-text">StreamHub</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#browse" class="nav-link">Browse</a></li>
+                <li><a href="#trending" class="nav-link">Trending</a></li>
+                <li><a href="#watchlist" class="nav-link">My List</a></li>
+            </ul>
+            <div class="nav-right">
+                <input type="text" class="search-box" placeholder="Search shows...">
+                <button class="user-btn">👤</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1 class="hero-title">The Crown</h1>
+            <p class="hero-description">Experience the royal drama and political intrigue. Season 5 now streaming.</p>
+            <div class="hero-buttons">
+                <button class="btn btn-play" onclick="playVideo()">▶ Play Now</button>
+                <button class="btn btn-info" onclick="showInfo()">ℹ More Info</button>
+            </div>
+        </div>
+        <div class="hero-overlay"></div>
+    </section>
+
+    <!-- Video Player Modal -->
+    <div id="videoModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeVideo()">&times;</span>
+            <video id="videoPlayer" class="video-player" controls>
+                <source src="https://www.w3schools.com/html/mov_bbb.mp4" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+        </div>
+    </div>
+
+    <!-- Info Modal -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content info-modal">
+            <span class="close" onclick="closeInfo()">&times;</span>
+            <h2>The Crown</h2>
+            <p><strong>Genre:</strong> Drama, History</p>
+            <p><strong>Rating:</strong> ⭐ 8.5/10</p>
+            <p><strong>Year:</strong> 2016 - Present</p>
+            <p><strong>Description:</strong> This drama series follows the political rivalries and romance of Queen Elizabeth II, starting with her marriage to Prince Philip.</p>
+            <button class="btn btn-play" onclick="playVideo()">▶ Play Now</button>
+        </div>
+    </div>
+
+    <!-- Featured Section -->
+    <section class="featured" id="browse">
+        <h2 class="section-title">Featured Content</h2>
+        <div class="content-grid">
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>Stranger Things</h3>
+                <p class="card-meta">Drama • 4 Seasons</p>
+                <div class="card-rating">⭐ 8.7/10</div>
+            </div>
+
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>The Witcher</h3>
+                <p class="card-meta">Fantasy • 3 Seasons</p>
+                <div class="card-rating">⭐ 8.0/10</div>
+            </div>
+
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>Breaking Bad</h3>
+                <p class="card-meta">Crime • 5 Seasons</p>
+                <div class="card-rating">⭐ 9.5/10</div>
+            </div>
+
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>Squid Game</h3>
+                <p class="card-meta">Drama • 1 Season</p>
+                <div class="card-rating">⭐ 8.0/10</div>
+            </div>
+
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>The Office</h3>
+                <p class="card-meta">Comedy • 9 Seasons</p>
+                <div class="card-rating">⭐ 9.0/10</div>
+            </div>
+
+            <div class="content-card" onclick="selectShow(this)">
+                <div class="card-image" style="background: linear-gradient(135deg, #ff9a56 0%, #ff6a88 100%);">
+                    <span class="play-icon">▶</span>
+                </div>
+                <h3>Game of Thrones</h3>
+                <p class="card-meta">Fantasy • 8 Seasons</p>
+                <div class="card-rating">⭐ 9.2/10</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Trending Section -->
+    <section class="trending" id="trending">
+        <h2 class="section-title">Trending Now</h2>
+        <div class="trending-grid">
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <span class="trending-badge">1</span>
+                </div>
+                <h3>Succession</h3>
+                <p>Drama Series</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <span class="trending-badge">2</span>
+                </div>
+                <h3>Wednesday</h3>
+                <p>Mystery Series</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="trending-badge">3</span>
+                </div>
+                <h3>Oppenheimer</h3>
+                <p>Film</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <span class="trending-badge">4</span>
+                </div>
+                <h3>Barbie</h3>
+                <p>Comedy Film</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>StreamHub</h4>
+                <ul>
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Help Center</a></li>
+                    <li><a href="#">Careers</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Explore</h4>
+                <ul>
+                    <li><a href="#">New & Popular</a></li>
+                    <li><a href="#">Top 10</a></li>
+                    <li><a href="#">Categories</a></li>
+                </ul>
+            </div>
+            <div class="footer-section">
+                <h4>Legal</h4>
+                <ul>
+                    <li><a href="#">Privacy</a></li>
+                    <li><a href="#">Terms</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+        <p class="footer-bottom">&copy; 2025 StreamHub. All rights reserved.</p>
+    </footer>
+
+    <script src="streaming_platform.js"></script>
+</body>
+
+</html>
