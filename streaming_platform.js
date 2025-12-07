@@ -40,6 +40,200 @@ function selectShow(element) {
     // You can add additional functionality here
 }
 
+// ==================== Demo Gmail Auth Flow ====================
+function openAuthModal() {
+    const m = document.getElementById('authModal');
+    if (m) m.classList.add('show');
+}
+
+function closeAuthModal() {
+    const m = document.getElementById('authModal');
+    if (m) m.classList.remove('show');
+}
+
+function openVerifyModal() {
+    const vm = document.getElementById('verifyModal');
+    const email = JSON.parse(localStorage.getItem('auth_pending') || 'null') ? .email || '';
+    const verifyText = document.getElementById('verifyEmailText');
+    if (verifyText) verifyText.textContent = email;
+    if (vm) vm.classList.add('show');
+}
+
+function closeVerifyModal() {
+    const vm = document.getElementById('verifyModal');
+    if (vm) vm.classList.remove('show');
+}
+
+function sendAuthCode() {
+    const emailInput = document.getElementById('authEmail');
+    if (!emailInput) return showNotification('Email input not found');
+    const email = (emailInput.value || '').trim().toLowerCase();
+    if (!email || !email.includes('@gmail.com')) {
+        return showNotification('Please enter a valid Gmail address (demo).');
+    }
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    const pending = { email, code, expires };
+    localStorage.setItem('auth_pending', JSON.stringify(pending));
+
+    // In a real app: send code to user's email via backend
+    // For demo: show a notification containing the code
+    showNotification(`Verification code (demo): ${code}`);
+    closeAuthModal();
+    openVerifyModal();
+}
+
+function verifyAuthCode() {
+    const input = document.getElementById('verifyCodeInput');
+    if (!input) return;
+    const entered = (input.value || '').trim();
+    const pending = JSON.parse(localStorage.getItem('auth_pending') || 'null');
+    if (!pending) return showNotification('No pending verification. Start sign-in again.');
+
+    if (Date.now() > pending.expires) {
+        localStorage.removeItem('auth_pending');
+        return showNotification('Verification code expired. Please request a new code.');
+    }
+
+    if (entered === pending.code) {
+        // Create user record
+        const user = { email: pending.email, verifiedAt: new Date().toISOString() };
+        localStorage.setItem('streamhub_user', JSON.stringify(user));
+        localStorage.removeItem('auth_pending');
+        closeVerifyModal();
+        showNotification(`Welcome, ${user.email}`);
+        updateAccountUI();
+    } else {
+        showNotification('Incorrect verification code.');
+    }
+}
+
+function logout() {
+    localStorage.removeItem('streamhub_user');
+    updateAccountUI();
+    showNotification('Logged out');
+}
+
+function updateAccountUI() {
+    const user = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+    const authBtn = document.getElementById('authBtn');
+    const accountMenu = document.getElementById('accountMenu');
+    const accountEmail = document.getElementById('accountEmail');
+    const accountDropdown = document.getElementById('accountDropdown');
+
+    if (user) {
+        if (authBtn) authBtn.style.display = 'none';
+        if (accountMenu) accountMenu.style.display = 'inline-block';
+        if (accountEmail) accountEmail.textContent = user.email;
+
+        // show/hide dropdown on click
+        const accountBtn = document.getElementById('accountBtn');
+        if (accountBtn) {
+            accountBtn.onclick = () => {
+                if (accountDropdown) accountDropdown.style.display = accountDropdown.style.display === 'none' ? 'block' : 'none';
+            };
+        }
+
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) logoutBtn.onclick = logout;
+    } else {
+        if (authBtn) authBtn.style.display = 'inline-block';
+        if (accountMenu) accountMenu.style.display = 'none';
+    }
+}
+
+// Wire auth button
+document.addEventListener('DOMContentLoaded', function() {
+    const authBtn = document.getElementById('authBtn');
+    if (authBtn) authBtn.addEventListener('click', function() {
+        openAuthModal();
+    });
+
+    // If verify modal exists, wire Enter key
+    const verifyInput = document.getElementById('verifyCodeInput');
+    if (verifyInput) {
+        verifyInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') verifyAuthCode();
+        });
+    }
+
+    updateAccountUI();
+});
+
+// ==================== Google Identity Integration (optional production)
+// Reads the meta tag `google-signin-client_id` in the document head. If set,
+// the Google Identity button is rendered in the auth modal and will call
+// `handleCredentialResponse` with an ID token when a user signs in.
+function initGoogleIdentity() {
+    try {
+        const meta = document.querySelector('meta[name="google-signin-client_id"]');
+        const clientId = meta ? meta.content.trim() : '';
+        if (!clientId || clientId.startsWith('REPLACE_WITH')) {
+            // No real client id configured — keep demo flow
+            return;
+        }
+
+        // Initialize Google Identity Services
+        if (window.google && google.accounts && google.accounts.id) {
+            google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleCredentialResponse,
+            });
+
+            // Render a standard Google Sign-In button
+            google.accounts.id.renderButton(
+                document.getElementById('googleSignInBtn'), { theme: 'outline', size: 'large', width: '250' }
+            );
+
+            // Optionally show One Tap (commented out; enable if desired)
+            // google.accounts.id.prompt();
+        }
+    } catch (err) {
+        console.warn('Google Identity init failed:', err);
+    }
+}
+
+// Handle the JWT credential response from Google
+function handleCredentialResponse(response) {
+    if (!response || !response.credential) return;
+    // Decode JWT payload (base64url)
+    const payload = parseJwt(response.credential);
+    const email = payload.email || payload['email'];
+    const name = payload.name || '';
+
+    if (email) {
+        const user = { email: email.toLowerCase(), name, verifiedAt: new Date().toISOString(), provider: 'google' };
+        localStorage.setItem('streamhub_user', JSON.stringify(user));
+        updateAccountUI();
+        closeAuthModal();
+        showNotification(`Welcome, ${user.email}`);
+    } else {
+        showNotification('Google sign-in succeeded but no email found.');
+    }
+}
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return {};
+    }
+}
+
+// Initialize Google Identity after DOM and remote script load
+window.addEventListener('load', function() {
+    // Wait a tick so the async Google script can attach `google`
+    setTimeout(initGoogleIdentity, 500);
+});
+
 // ==================== Notifications ====================
 function showNotification(message) {
     const notification = document.createElement('div');

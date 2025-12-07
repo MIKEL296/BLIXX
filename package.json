@@ -1,0 +1,12 @@
+{
+    "name": "streamhub-frontend",
+    "version": "1.0.0",
+    "description": "Front-end demo for StreamHub streaming platform",
+    "scripts": {
+        "start": "npx serve .",
+        "preview": "npx http-server -p 8000"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "MIT"
+}
