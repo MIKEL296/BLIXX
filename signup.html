@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - StreamHub</title>
+    <link rel="stylesheet" href="streaming_platform.css">
+    <meta name="google-signin-client_id" content="REPLACE_WITH_YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com">
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body id="signupPage">
+    <main style="max-width:720px;margin:60px auto;padding:20px;">
+        <h1>Create a StreamHub account</h1>
+        <p>Sign up with email/password or use your Google account.</p>
+
+        <section style="margin-top:20px;">
+            <h3>Email sign up</h3>
+            <input id="signUpEmail" class="auth-input" type="email" placeholder="you@example.com" />
+            <input id="signUpPassword" class="auth-input" type="password" placeholder="Password (min 6 chars)" />
+            <input id="signUpConfirm" class="auth-input" type="password" placeholder="Confirm password" />
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button id="signUpBtn" class="btn btn-play">Create account</button>
+                <a href="streaming_platform.html" class="btn btn-info">Back</a>
+            </div>
+        </section>
+
+        <hr style="margin:24px 0;border-color:rgba(255,255,255,0.06)" />
+
+    </main>
+
+    <script src="streaming_platform.js"></script>
+    <script>
+        // Wire the page-specific button to trigger Google prompt
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('signUpWithGoogleBtn');
+            if (btn) btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                // Use signin action so handleCredentialResponse will create session
+                if (window.triggerGooglePrompt) triggerGooglePrompt('signin');
+            });
+
+            // Ensure signUpBtn is present and triggers createAccount flow (already wired in streaming_platform.js via id)
+        });
+    </script>
+</body>
+
+</html>

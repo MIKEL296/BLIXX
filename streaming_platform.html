@@ -29,9 +29,11 @@
             <div class="nav-right">
                 <input type="text" class="search-box" placeholder="Search shows...">
                 <button id="authBtn" class="btn-auth">Sign in</button>
+                <button onclick="window.location.href='signup.html'" id="signupBtn" class="btn-auth">Sign up</button>
                 <div id="accountMenu" class="account-menu" style="display:none">
                     <button id="accountBtn" class="user-btn">👤</button>
                     <div id="accountDropdown" class="account-dropdown" style="display:none">
+                        <button id="accountSettingsBtn" class="btn">Account Settings</button>
                         <div class="account-info">
                             <div id="accountEmail" class="account-email">you@example.com</div>
                         </div>
@@ -179,6 +181,39 @@
     <!-- Trending Section -->
     <section class="trending" id="trending">
         <h2 class="section-title">Trending Now</h2>
+        <div class="trending-grid">
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <span class="trending-badge">1</span>
+                </div>
+                <h3>Succession</h3>
+                <p>Drama Series</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    <span class="trending-badge">2</span>
+                </div>
+                <h3>Wednesday</h3>
+                <p>Mystery Series</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    <span class="trending-badge">3</span>
+                </div>
+                <h3>Oppenheimer</h3>
+                <p>Film</p>
+            </div>
+
+            <div class="trending-item">
+                <div class="trending-image" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    <span class="trending-badge">4</span>
+                </div>
+                <h3>Barbie</h3>
+                <p>Comedy Film</p>
+            </div>
+        </div>
         <div class="trending-grid">
             <div class="trending-item">
                 <div class="trending-image" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">

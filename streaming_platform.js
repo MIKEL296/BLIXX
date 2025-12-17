@@ -53,7 +53,8 @@ function closeAuthModal() {
 
 function openVerifyModal() {
     const vm = document.getElementById('verifyModal');
-    const email = JSON.parse(localStorage.getItem('auth_pending') || 'null') ? .email || '';
+    const pending = JSON.parse(localStorage.getItem('auth_pending') || 'null');
+    const email = pending && pending.email ? pending.email : '';
     const verifyText = document.getElementById('verifyEmailText');
     if (verifyText) verifyText.textContent = email;
     if (vm) vm.classList.add('show');
@@ -111,6 +112,88 @@ function verifyAuthCode() {
     }
 }
 
+// ==================== Simple Password-based Accounts (demo) ====================
+function getUsers() {
+    return JSON.parse(localStorage.getItem('streamhub_users') || '{}');
+}
+
+function setUsers(obj) {
+    localStorage.setItem('streamhub_users', JSON.stringify(obj));
+}
+
+async function hashPassword(password) {
+    try {
+        const enc = new TextEncoder();
+        const data = enc.encode(password);
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        const arr = Array.from(new Uint8Array(hash));
+        return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+        // Fallback: do plain (insecure) return
+        return password;
+    }
+}
+
+async function createAccount(email, password) {
+    email = (email || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) return { ok: false, msg: 'Enter a valid email.' };
+    if (!password || password.length < 6) return { ok: false, msg: 'Password must be at least 6 characters.' };
+
+    const users = getUsers();
+    if (users[email]) return { ok: false, msg: 'Account already exists.' };
+
+    const hash = await hashPassword(password);
+    users[email] = { email, passwordHash: hash, createdAt: new Date().toISOString(), provider: 'local' };
+    setUsers(users);
+
+    // Automatically sign in
+    const user = { email, provider: 'local', signedInAt: new Date().toISOString() };
+    localStorage.setItem('streamhub_user', JSON.stringify(user));
+    updateAccountUI();
+    // Redirect back to main app if on signup page
+    postAuthRedirect();
+    return { ok: true, user };
+}
+
+async function signInWithPassword(email, password) {
+    email = (email || '').trim().toLowerCase();
+    if (!email || !password) return { ok: false, msg: 'Email and password required.' };
+
+    const users = getUsers();
+    const record = users[email];
+    if (!record) return { ok: false, msg: 'No account found for that email.' };
+
+    const hash = await hashPassword(password);
+    if (hash !== record.passwordHash) return { ok: false, msg: 'Incorrect password.' };
+
+    const user = { email, provider: 'local', signedInAt: new Date().toISOString() };
+    localStorage.setItem('streamhub_user', JSON.stringify(user));
+    updateAccountUI();
+    // Redirect back to main app if on signup page
+    postAuthRedirect();
+    return { ok: true, user };
+}
+
+function updateAccountUI() {
+    const user = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+    const authBtn = document.getElementById('authBtn');
+    const signupBtn = document.querySelector('.btn-signup'); // Select the new button
+    const accountMenu = document.getElementById('accountMenu');
+    // ... existing variables ...
+
+    if (user) {
+        if (authBtn) authBtn.style.display = 'none';
+        if (signupBtn) signupBtn.style.display = 'none'; // Hide Sign up when logged in
+        if (accountMenu) accountMenu.style.display = 'inline-block';
+        // ... rest of logic ...
+    } else {
+        if (authBtn) authBtn.style.display = 'inline-block';
+        if (signupBtn) signupBtn.style.display = 'inline-block'; // Show Sign up when logged out
+        if (accountMenu) accountMenu.style.display = 'none';
+    }
+}
+
+
 function logout() {
     localStorage.removeItem('streamhub_user');
     updateAccountUI();
@@ -127,7 +210,7 @@ function updateAccountUI() {
     if (user) {
         if (authBtn) authBtn.style.display = 'none';
         if (accountMenu) accountMenu.style.display = 'inline-block';
-        if (accountEmail) accountEmail.textContent = user.email;
+        if (accountEmail) accountEmail.textContent = user.email + (user.provider ? ' (' + user.provider + ')' : '');
 
         // show/hide dropdown on click
         const accountBtn = document.getElementById('accountBtn');
@@ -163,6 +246,58 @@ document.addEventListener('DOMContentLoaded', function() {
     updateAccountUI();
 });
 
+// Wire password-based sign up / sign in buttons (support multiple id variants)
+document.addEventListener('DOMContentLoaded', function() {
+    // Sign-up / create account button
+    const createButtons = [
+        'signUpBtn', 'createAccountBtn', 'authCreateBtn'
+    ];
+
+    createButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            // Try common input ids
+            const emailEl = document.getElementById('authEmail') || document.getElementById('signUpEmail') || document.getElementById('email');
+            const passEl = document.getElementById('authPassword') || document.getElementById('signUpPassword') || document.getElementById('password');
+            const passConfirmEl = document.getElementById('authConfirmPassword') || document.getElementById('signUpConfirm') || document.getElementById('confirmPassword');
+
+            const email = emailEl ? emailEl.value : '';
+            const password = passEl ? passEl.value : '';
+            const confirm = passConfirmEl ? passConfirmEl.value : password;
+
+            if (password !== confirm) return showNotification('Passwords do not match.');
+
+            const res = await createAccount(email, password);
+            if (!res.ok) return showNotification(res.msg || 'Could not create account');
+
+            showNotification('Account created and signed in');
+            closeAuthModal();
+        });
+    });
+
+    // Sign-in buttons
+    const signInButtons = ['signInBtn', 'signInWithPasswordBtn', 'authSignInBtn'];
+    signInButtons.forEach(id => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            const emailEl = document.getElementById('authEmail') || document.getElementById('signInEmail') || document.getElementById('email');
+            const passEl = document.getElementById('authPassword') || document.getElementById('signInPassword') || document.getElementById('password');
+            const email = emailEl ? emailEl.value : '';
+            const password = passEl ? passEl.value : '';
+
+            const res = await signInWithPassword(email, password);
+            if (!res.ok) return showNotification(res.msg || 'Sign-in failed');
+
+            showNotification(`Signed in as ${res.user.email}`);
+            closeAuthModal();
+        });
+    });
+});
+
 // ==================== Google Identity Integration (optional production)
 // Reads the meta tag `google-signin-client_id` in the document head. If set,
 // the Google Identity button is rendered in the auth modal and will call
@@ -170,30 +305,212 @@ document.addEventListener('DOMContentLoaded', function() {
 function initGoogleIdentity() {
     try {
         const meta = document.querySelector('meta[name="google-signin-client_id"]');
-        const clientId = meta ? meta.content.trim() : '';
-        if (!clientId || clientId.startsWith('REPLACE_WITH')) {
-            // No real client id configured — keep demo flow
+        const stored = localStorage.getItem('google_signin_client_id') || '';
+        let clientId = '';
+        if (meta && meta.content) {
+            const c = meta.content.trim();
+            if (c && !c.startsWith('REPLACE_WITH')) clientId = c;
+        }
+        if (!clientId && stored) clientId = stored.trim();
+
+        if (!clientId) {
+            // No configured client id; nothing to initialize here
             return;
         }
 
-        // Initialize Google Identity Services
-        if (window.google && google.accounts && google.accounts.id) {
+        // Initialize Google Identity Services (wait if `google` not ready)
+        if (!(window.google && google.accounts && google.accounts.id)) {
+            // try again shortly
+            setTimeout(initGoogleIdentity, 500);
+            return;
+        }
+
+        try {
             google.accounts.id.initialize({
                 client_id: clientId,
                 callback: handleCredentialResponse,
             });
 
             // Render a standard Google Sign-In button
-            google.accounts.id.renderButton(
-                document.getElementById('googleSignInBtn'), { theme: 'outline', size: 'large', width: '250' }
-            );
+            const container = document.getElementById('googleSignInBtn');
+            if (container) {
+                // Clear previous contents then render
+                container.innerHTML = '';
+                google.accounts.id.renderButton(container, { theme: 'outline', size: 'large', width: '250' });
+            }
 
             // Optionally show One Tap (commented out; enable if desired)
             // google.accounts.id.prompt();
+        } catch (e) {
+            console.warn('Google accounts init error', e);
         }
     } catch (err) {
         console.warn('Google Identity init failed:', err);
     }
+}
+
+function saveGoogleClientId() {
+    const input = document.getElementById('googleClientIdInput');
+    if (!input) return showNotification('Client ID input not found');
+    const v = (input.value || '').trim();
+    if (!v) return showNotification('Enter a valid Google Client ID');
+    // Basic validation: should end with .apps.googleusercontent.com
+    const re = /^[0-9A-Za-z\-\.]+\.apps\.googleusercontent\.com$/;
+    if (!re.test(v)) return showNotification('Client ID looks invalid. It should end with .apps.googleusercontent.com');
+    localStorage.setItem('google_signin_client_id', v);
+    showNotification('Saved Google Client ID');
+    // Attempt to initialize immediately
+    setTimeout(() => {
+        try {
+            initGoogleIdentity();
+            showNotification('Google sign-in initialized');
+        } catch (e) {
+            showNotification('Initialization failed; try reloading');
+        }
+    }, 500);
+}
+
+function clearGoogleClientId() {
+    localStorage.removeItem('google_signin_client_id');
+    const input = document.getElementById('googleClientIdInput');
+    if (input) input.value = '';
+    // Remove rendered button if present
+    const container = document.getElementById('googleSignInBtn');
+    if (container) container.innerHTML = '';
+    showNotification('Cleared saved Google Client ID');
+}
+
+function openGoogleClientIdHelp() {
+    const url = 'https://developers.google.com/identity/gsi/web/guides/get-google-api-clientid';
+    try {
+        window.open(url, '_blank');
+    } catch (e) {
+        showNotification('Unable to open help link.');
+    }
+}
+
+// Wire client-id save input in auth modal
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('googleClientIdInput');
+    const saveBtn = document.getElementById('saveGoogleClientIdBtn');
+    if (input) {
+        const stored = localStorage.getItem('google_signin_client_id');
+        if (stored) input.value = stored;
+    }
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            saveGoogleClientId();
+        });
+    }
+    const clearBtn = document.getElementById('clearGoogleClientIdBtn');
+    if (clearBtn) clearBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearGoogleClientId();
+    });
+    const helpBtn = document.getElementById('helpGoogleClientIdBtn');
+    if (helpBtn) helpBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        openGoogleClientIdHelp();
+    });
+    // Wire link / trusted google buttons
+    const linkBtn = document.getElementById('linkGoogleBtn');
+    const trustedBtn = document.getElementById('trustedGoogleBtn');
+    if (linkBtn) linkBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        linkGoogleToAccount();
+    });
+    if (trustedBtn) trustedBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        signInWithGoogleTrusted();
+    });
+});
+
+// Pending link info stored temporarily while user confirms
+let pendingGoogleLink = null;
+
+function showLinkConfirmModalFor(email, name, credential) {
+    pendingGoogleLink = { email, name, credential };
+    const m = document.getElementById('linkConfirmModal');
+    const txt = document.getElementById('linkConfirmText');
+    if (txt) txt.innerHTML = `Link the Google account <strong>${email}</strong> to your current StreamHub account?`;
+    if (m) m.classList.add('show');
+}
+
+function closeLinkConfirmModal() {
+    const m = document.getElementById('linkConfirmModal');
+    if (m) m.classList.remove('show');
+    pendingGoogleLink = null;
+}
+
+async function confirmLink() {
+    if (!pendingGoogleLink) return showNotification('Nothing to link.');
+    const { email } = pendingGoogleLink;
+    // perform the same linking logic as before
+    const current = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+    if (!current) {
+        closeLinkConfirmModal();
+        return showNotification('No local user signed in to link to.');
+    }
+
+    try {
+        const users = getUsers();
+        const localRecord = users[current.email] || { email: current.email };
+        localRecord.googleEmail = email.toLowerCase();
+        localRecord.googleLinkedAt = new Date().toISOString();
+        localRecord.provider = localRecord.provider ? (localRecord.provider.includes('google') ? localRecord.provider : localRecord.provider + '+google') : 'local+google';
+        users[current.email] = localRecord;
+        setUsers(users);
+
+        const session = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+        if (session) {
+            session.googleLinked = localRecord.googleEmail;
+            session.provider = localRecord.provider;
+            localStorage.setItem('streamhub_user', JSON.stringify(session));
+        }
+
+        updateAccountUI();
+        closeLinkConfirmModal();
+        showNotification(`Linked Google account: ${localRecord.googleEmail}`);
+    } catch (e) {
+        console.warn('confirmLink error', e);
+        showNotification('Failed to link Google account.');
+        closeLinkConfirmModal();
+    }
+}
+
+// Wire confirm button
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('confirmLinkBtn');
+    if (confirmBtn) confirmBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        confirmLink();
+    });
+});
+
+function triggerGooglePrompt(action = 'signin') {
+    // action: 'signin' | 'link' | 'trusted'
+    if (!(window.google && google.accounts && google.accounts.id)) return showNotification('Google SDK not ready. Save client ID and reload if necessary.');
+    try {
+        localStorage.setItem('google_signin_action', action);
+        // Show One Tap / account chooser
+        google.accounts.id.prompt();
+    } catch (e) {
+        console.warn('triggerGooglePrompt error', e);
+        showNotification('Unable to prompt Google sign-in.');
+    }
+}
+
+function linkGoogleToAccount() {
+    const current = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+    if (!current) return showNotification('Please sign in to your account first to link Google.');
+    triggerGooglePrompt('link');
+    showNotification('Completing Google sign-in will link it to your account.');
+}
+
+function signInWithGoogleTrusted() {
+    triggerGooglePrompt('trusted');
+    showNotification('Please complete Google sign-in to continue.');
 }
 
 // Handle the JWT credential response from Google
@@ -204,15 +521,57 @@ function handleCredentialResponse(response) {
     const email = payload.email || payload['email'];
     const name = payload.name || '';
 
-    if (email) {
-        const user = { email: email.toLowerCase(), name, verifiedAt: new Date().toISOString(), provider: 'google' };
-        localStorage.setItem('streamhub_user', JSON.stringify(user));
-        updateAccountUI();
-        closeAuthModal();
-        showNotification(`Welcome, ${user.email}`);
-    } else {
-        showNotification('Google sign-in succeeded but no email found.');
+    // Determine context: normal signin, linking, or trusted signin
+    const action = localStorage.getItem('google_signin_action') || 'signin';
+    localStorage.removeItem('google_signin_action');
+
+    if (!email) {
+        return showNotification('Google sign-in succeeded but no email found.');
     }
+
+    const gEmail = email.toLowerCase();
+
+    if (action === 'link') {
+        const current = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+        if (!current) return showNotification('No local user signed in to link to.');
+
+        // Attach google info to local users record (demo: stored in streamhub_users)
+        try {
+            const users = getUsers();
+            const localRecord = users[current.email] || { email: current.email };
+            localRecord.googleEmail = gEmail;
+            localRecord.googleLinkedAt = new Date().toISOString();
+            localRecord.provider = localRecord.provider ? (localRecord.provider.includes('google') ? localRecord.provider : localRecord.provider + '+google') : 'local+google';
+            users[current.email] = localRecord;
+            setUsers(users);
+
+            // Update current session user to reflect link
+            const session = JSON.parse(localStorage.getItem('streamhub_user') || 'null');
+            if (session) {
+                session.googleLinked = gEmail;
+                session.provider = session.provider ? (session.provider.includes('google') ? session.provider : session.provider + '+google') : 'local+google';
+                localStorage.setItem('streamhub_user', JSON.stringify(session));
+            }
+
+            updateAccountUI();
+            closeAuthModal();
+            showNotification(`Linked Google account: ${gEmail}`);
+        } catch (e) {
+            console.warn('Linking google failed', e);
+            showNotification('Failed to link Google account.');
+        }
+        return;
+    }
+
+    // For sign-in / trusted: create/update session user from Google
+    const user = { email: gEmail, name, verifiedAt: new Date().toISOString(), provider: 'google' };
+    localStorage.setItem('streamhub_user', JSON.stringify(user));
+    updateAccountUI();
+    closeAuthModal();
+    showNotification(`Welcome, ${user.email}`);
+
+    // Redirect back to main app if on signup page
+    postAuthRedirect();
 }
 
 function parseJwt(token) {
@@ -233,6 +592,18 @@ window.addEventListener('load', function() {
     // Wait a tick so the async Google script can attach `google`
     setTimeout(initGoogleIdentity, 500);
 });
+
+// If the user signed in on a signup page, redirect them back to the main app
+function postAuthRedirect() {
+    try {
+        const isSignupPage = (document && document.getElementById && document.getElementById('signupPage')) || window.location.pathname.endsWith('signup.html');
+        if (isSignupPage) {
+            setTimeout(() => { window.location.href = 'streaming_platform.html'; }, 700);
+        }
+    } catch (e) {
+        // ignore failures
+    }
+}
 
 // ==================== Notifications ====================
 function showNotification(message) {
